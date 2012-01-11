@@ -1,5 +1,6 @@
 package com.tw.mobilemingle.dao;
 
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -14,80 +15,38 @@ import com.tw.mobilemingle.domain.Application;
 import com.tw.mobilemingle.domain.Journey;
 
 public class ApplicationDao {
-  private int applicationCount(String applicationName) {
-    PreparedQuery pq = allApplicationsQuery(applicationName);
-    int count = 0;
-    for (@SuppressWarnings("unused")
-    Entity current : pq.asIterable())
-      ++count;
-    return count;
-  }
+  private static final String JOURNEY = "Journey";
+  private static final String APPLICATION_FIELD = "application";
+  private static final String STORY_COUNT_FIELD = "storyCount";
+  private static final String APPLICATION = "Application";
+  private static final String POINTS_FIELD = "points";
+  private static final String NAME_FIELD = "name";
 
-  private PreparedQuery allApplicationsQuery(String applicationName) {
-    DatastoreService service = DatastoreServiceFactory.getDatastoreService();
-    Query q = applicationQuery();
-    q.addFilter("name", FilterOperator.EQUAL, applicationName);
-    PreparedQuery pq = service.prepare(q);
-    return pq;
-  }
-
-  private Query applicationQuery() {
-    Query q = new Query("Application");
-    return q;
-  }
-
-  public ApplicationDao create(Application a) {
-    if (applicationCount(a.getName()) != 0)
-      throw new DuplicatedApplicationException(a.getName());
-
-    DatastoreService service = DatastoreServiceFactory.getDatastoreService();
-    Entity e = new Entity("Application");
-    e.setProperty("name", a.getName());
+  public void create(Application application) {
+    if (applicationNameAlreadyUsed(application.getName()))
+      throw new DuplicatedApplicationException(application.getName());
+  
+    DatastoreService service = ds();
+    Entity e = new Entity(APPLICATION);
+    e.setProperty(NAME_FIELD, application.getName());
     service.put(e);
-    for (Journey j : a.getJourneys()) {
-      Entity currentJourney = new Entity("Journey");
-      currentJourney.setProperty("name", j.name);
-      currentJourney.setProperty("storyCount", j.storyCount);
-      currentJourney.setProperty("points", j.points);
-      currentJourney.setProperty("application", e.getKey());
-      service.put(currentJourney);
-    }
-    return this;
+    for (Journey j : application.getJourneys()) 
+      storeAJourney(service, e, j);
   }
 
   public Application findByName(String applicationName) {
-    DatastoreService service = DatastoreServiceFactory.getDatastoreService();
+    DatastoreService service = ds();
     PreparedQuery pq = allApplicationsQuery(applicationName);
-
-    List<Application> applications = new LinkedList<Application>();
-    for (Entity result : pq.asIterable())
-      applications.add(retrieveOneApplication(service, result));
-
-    if (applications.size() == 0)
-      throw new NoSuchApplicationException(applicationName);
-    if (applications.size() > 1)
-      throw new DuplicatedApplicationException(applicationName);
-
-    return applications.get(0);
-  }
-
-  private Application retrieveOneApplication(DatastoreService service, Entity result) {
-    String name = result.getProperty("name").toString();
-    Application application = new Application(name);
-    appendJourneys(service, application, result);
-    return application;
-  }
-
-  private void appendJourneys(DatastoreService service, Application application, Entity applicationEntity) {
-    Query jq = new Query("Journey");
-    jq.addFilter("application", FilterOperator.EQUAL, applicationEntity.getKey());
-    PreparedQuery pjq = service.prepare(jq);
-    for (Entity journey : pjq.asIterable()) {
-      String jName = journey.getProperty("name").toString();
-      int points = Integer.parseInt(journey.getProperty("points").toString());
-      int stories = Integer.parseInt(journey.getProperty("storyCount").toString());
-      application.add(new Journey(jName, points, stories));
-    }
+  
+    Iterator<Entity> iter = pq.asIterator();
+  
+    verifyNotFound(applicationName, iter);
+  
+    Application foundApplication = retrieveOneApplication(service, iter.next());
+  
+    verifyNotDuplicated(applicationName, iter);
+  
+    return foundApplication;
   }
 
   public ApplicationDao update(Application a) {
@@ -96,56 +55,36 @@ public class ApplicationDao {
     return this;
   }
 
-  public ApplicationDao delete(String applicationName) {
-    DatastoreService service = DatastoreServiceFactory.getDatastoreService();
+  public void delete(String applicationName) {
+    DatastoreService service = ds();
     Query q = applicationQuery();
-    q.addFilter("name", FilterOperator.EQUAL, applicationName);
+    q.addFilter(NAME_FIELD, FilterOperator.EQUAL, applicationName);
     PreparedQuery pq = service.prepare(q);
-    List<Key> keys = new LinkedList<Key>();
-    for (Entity result : pq.asIterable()) {
-      keys.add(result.getKey());
-    }
-    service.delete(keys);
-
-    for (Entity result : pq.asIterable()) {
-      Query jq = new Query("Journey");
-      jq.addFilter("application", FilterOperator.EQUAL, result.getKey());
-      pq = service.prepare(jq);
-      List<Key> journeyKeys = new LinkedList<Key>();
-      for (Entity journey : pq.asIterable())
-        journeyKeys.add(journey.getKey());
-      service.delete(journeyKeys);
-    }
-
-    return this;
+    List<Key> keys = removeAllFound(service, pq);
+  
+    for (Key current : keys) 
+      deleteApplicationsJourneys(service, current);
   }
 
-  public ApplicationDao deleteAllApplications() {
-    DatastoreService service = DatastoreServiceFactory.getDatastoreService();
+  public void deleteApplicationsJourneys(DatastoreService service, Key applicationKey) {
+    Query jq = new Query(JOURNEY);
+    jq.addFilter(APPLICATION_FIELD, FilterOperator.EQUAL, applicationKey);
+    PreparedQuery pq = service.prepare(jq);
+    removeAllFound(service, pq);
+  }
+
+  public void deleteAllApplications() {
+    DatastoreService service = ds();
     Query q = applicationQuery();
     PreparedQuery pq = service.prepare(q);
-    List<Key> keys = new LinkedList<Key>();
-    for (Entity result : pq.asIterable())
-      keys.add(result.getKey());
-    service.delete(keys);
+    removeAllFound(service, pq);
     deleteAllJoureys();
-    return this;
-  }
-
-  private void deleteAllJoureys() {
-    DatastoreService service = DatastoreServiceFactory.getDatastoreService();
-    Query q = new com.google.appengine.api.datastore.Query("Journey");
-    PreparedQuery pq = service.prepare(q);
-    List<Key> keys = new LinkedList<Key>();
-    for (Entity result : pq.asIterable())
-      keys.add(result.getKey());
-    service.delete(keys);
   }
 
   public List<Application> readAll() {
-    DatastoreService service = DatastoreServiceFactory.getDatastoreService();
-    PreparedQuery pq = service.prepare(new Query("Application"));
-
+    DatastoreService service = ds();
+    PreparedQuery pq = service.prepare(new Query(APPLICATION));
+  
     List<Application> applications = new LinkedList<Application>();
     for (Entity result : pq.asIterable())
       applications.add(retrieveOneApplication(service, result));
@@ -156,4 +95,84 @@ public class ApplicationDao {
     return applicationCount(applicationName) > 0;
   }
 
+  private boolean applicationNameAlreadyUsed(String name) {
+    return applicationCount(name) != 0;
+  }
+
+  private void verifyNotDuplicated(String applicationName, Iterator<Entity> iter) {
+    if (iter.hasNext())
+      throw new DuplicatedApplicationException(applicationName);
+  }
+
+  private void verifyNotFound(String applicationName, Iterator<Entity> iter) {
+    if (!iter.hasNext())
+      throw new NoSuchApplicationException(applicationName);
+  }
+
+  private void storeAJourney(DatastoreService service, Entity e, Journey j) {
+    Entity currentJourney = new Entity(JOURNEY);
+    currentJourney.setProperty(NAME_FIELD, j.name);
+    currentJourney.setProperty(STORY_COUNT_FIELD, j.storyCount);
+    currentJourney.setProperty(POINTS_FIELD, j.points);
+    currentJourney.setProperty(APPLICATION_FIELD, e.getKey());
+    service.put(currentJourney);
+  }
+
+  private int applicationCount(String applicationName) {
+    PreparedQuery pq = allApplicationsQuery(applicationName);
+    int count = 0;
+    for (Iterator<Entity> iter = pq.asIterator(); iter.hasNext(); iter.next())
+      ++count;
+    return count;
+  }
+
+  private PreparedQuery allApplicationsQuery(String applicationName) {
+    Query q = applicationQuery().addFilter(NAME_FIELD, FilterOperator.EQUAL, applicationName);
+    return ds().prepare(q);
+  }
+
+  private Query applicationQuery() {
+    return new Query(APPLICATION);
+  }
+
+  private Query journeyQuery() {
+    return new Query(JOURNEY);
+  }
+
+  private Application retrieveOneApplication(DatastoreService service, Entity result) {
+    String name = result.getProperty(NAME_FIELD).toString();
+    Application application = new Application(name);
+    retrieveJourneysIntoApplication(service, application, result);
+    return application;
+  }
+
+  private void retrieveJourneysIntoApplication(DatastoreService service, Application application, Entity applicationEntity) {
+    Query jq = journeyQuery().addFilter(APPLICATION_FIELD, FilterOperator.EQUAL, applicationEntity.getKey());
+    PreparedQuery pjq = service.prepare(jq);
+    for (Entity journey : pjq.asIterable()) {
+      String jName = journey.getProperty(NAME_FIELD).toString();
+      int points = Integer.parseInt(journey.getProperty(POINTS_FIELD).toString());
+      int stories = Integer.parseInt(journey.getProperty(STORY_COUNT_FIELD).toString());
+      application.add(new Journey(jName, points, stories));
+    }
+  }
+
+  private void deleteAllJoureys() {
+    Query q = journeyQuery();
+    DatastoreService service = ds();
+    PreparedQuery pq = service.prepare(q);
+    removeAllFound(service, pq);
+  }
+
+  private List<Key> removeAllFound(DatastoreService service, PreparedQuery pq) {
+    List<Key> keys = new LinkedList<Key>();
+    for (Entity result : pq.asIterable())
+      keys.add(result.getKey());
+    service.delete(keys);
+    return keys;
+  }
+  
+  protected DatastoreService ds() {
+    return DatastoreServiceFactory.getDatastoreService();
+  }
 }
