@@ -122,9 +122,9 @@ task wrapper(type: Wrapper) {
 }
 
 task integrationTests(type: Test) {
-	include '**/integration/*.*'
+	include '**integration/**'
 }
 
 test {
-	exclude '**/integration/*.*'
+	exclude '**integration/**'
 }

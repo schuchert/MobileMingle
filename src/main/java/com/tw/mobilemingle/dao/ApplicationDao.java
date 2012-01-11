@@ -142,6 +142,7 @@ public class ApplicationDao {
   private Application retrieveOneApplication(DatastoreService service, Entity result) {
     String name = result.getProperty(NAME_FIELD).toString();
     Application application = new Application(name);
+    application.id = result.getKey();
     retrieveJourneysIntoApplication(service, application, result);
     return application;
   }
@@ -153,7 +154,9 @@ public class ApplicationDao {
       String jName = journey.getProperty(NAME_FIELD).toString();
       int points = Integer.parseInt(journey.getProperty(POINTS_FIELD).toString());
       int stories = Integer.parseInt(journey.getProperty(STORY_COUNT_FIELD).toString());
-      application.add(new Journey(jName, points, stories));
+      Journey j = new Journey(jName, points, stories);
+      j.id = journey.getKey();
+      application.add(j);
     }
   }
 
