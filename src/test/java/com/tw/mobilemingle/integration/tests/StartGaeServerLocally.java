@@ -16,7 +16,6 @@ public class StartGaeServerLocally {
 
   public void start() {
     gaeServerThread = new Thread(new Runnable() {
-      @Override
       public void run() {
         File dir = new File(webDirectory);
         KickStart.main(new String[] { DevAppServerMain.class.getName(), dir.getAbsolutePath() });

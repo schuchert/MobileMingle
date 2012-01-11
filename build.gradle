@@ -1,7 +1,6 @@
 import org.apache.ivy.plugins.resolver.URLResolver
 
 apply plugin: 'java'
-apply plugin: 'groovy'
 apply plugin: 'gae'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
@@ -74,6 +73,10 @@ webAppDirName = file('war')
 gae {
     warDir = file('war')
     downloadSdk = true
+		appcfg {
+			email='brett.schuchert@gmail.com'
+			passIn = true
+		}
 }
 
 clean.doLast {

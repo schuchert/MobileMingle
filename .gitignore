@@ -5,3 +5,6 @@ build
 classes
 *.class
 war/WEB-INF/lib
+.classpath
+.project
+.settings
