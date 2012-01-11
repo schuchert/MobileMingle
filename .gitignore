@@ -2,3 +2,5 @@
 *.swp
 build
 .DS_Store
+classes
+*.class

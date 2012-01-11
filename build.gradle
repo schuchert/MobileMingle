@@ -26,6 +26,7 @@ buildscript {
         add gitHub()
 				mavenCentral()
 				mavenRepo name: 'seasar', urls: 'http://maven.seasar.org/maven2'
+				mavenRepo name: 'sonatype', urls: 'https://oss.sonatype.org/content/groups/google/'
     }
 
     dependencies {
@@ -45,13 +46,15 @@ sourceSets {
 }
 
 dependencies {
-    def gaeVersion = '1.6.0'
+    def gaeVersion = '1.6.1'
     groovy 'org.codehaus.groovy:groovy-all:1.8.4'
     compile "com.google.appengine:appengine-api-1.0-sdk:$gaeVersion",
             "com.google.appengine:appengine-api-labs:$gaeVersion",
+            "com.google.appengine:appengine-tools-sdk:$gaeVersion",
             'glaforge:gaelyk:1.1',
 						'com.google.code.gson:gson:2.1+',
-						'javax.servlet:servlet-api:2.5'
+						'javax.servlet:servlet-api:2.5',
+						'org.apache.httpcomponents:httpclient:4.0-alpha4'
 
     testCompile 'org.spockframework:spock-core:0.5-groovy-1.8', {
         exclude group: 'org.codehaus.groovy', name: 'groovy-all'
@@ -130,4 +133,12 @@ eclipse {
 
 task wrapper(type: Wrapper) {
     gradleVersion = '1.0-milestone-4'
+}
+
+task integrationTest(type: Test) {
+	include '**/integration/*.*'
+}
+
+test {
+	exclude '**/integration/*.*'
 }
