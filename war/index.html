@@ -1,0 +1,58 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<!-- The HTML 4.01 Transitional DOCTYPE declaration-->
+<!-- above set at the top of the file will set     -->
+<!-- the browser's rendering engine into           -->
+<!-- "Quirks Mode". Replacing this declaration     -->
+<!-- with a "Standards Mode" doctype is supported, -->
+<!-- but may lead to some differences in layout.   -->
+
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" media="screen" href="css/start/jquery-ui-1.8.16.custom.css" />
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    font-size: 75%;
+}
+</style>
+<link rel="stylesheet" type="text/css" media="screen" href="css/ui.jqgrid.css" />
+<script src="lib/jquery-1.7.1.js" type="text/javascript"></script>
+<script src="js/i18n/grid.locale-en.js" type="text/javascript"></script>
+<script src="js/jquery.jqGrid.min.js" type="text/javascript"></script>
+<script src="quotes_ajax.js" type="text/javascript"></script>
+<title>Mobile Mingle</title>
+</head>
+
+<body>
+	<h1>Mobile Mingle - badly displayed stock quotes for now</h1>
+
+	<table>
+		<tr>
+			<td colspan="2" style="font-weight: bold;">Available Servlets:</td>
+		</tr>
+		<tr>
+			<td><a href="mobilemingle">MobileMingle</a></td>
+		</tr>
+		<tr>
+			<td><a href="jsonstockdata?q=a b c d e f g">JsonStockData</a></td>
+		</tr>
+	</table>
+	<div id="quoteform">
+		<form name="stockquote" action="">
+			<fieldset>
+				<label for="symbols" id="symbols_label">Symbols</label> 
+				<input type="text" name="symbols" id="symbols" size="50" value="" class="text-input" /> 
+				<label class="error" for="symbols" id="symbols_error">This field is required.</label> 
+				<br /> 
+				<input type="submit" name="submit" class="button" id="submit_btn" value="Get Quotes" />
+			</fieldset>
+		</form>
+	</div>
+    <div id="jqgrid">
+        <table id="grid"></table>
+        <div id="gridpager"></div>
+    </div>
+</body>
+</html>
